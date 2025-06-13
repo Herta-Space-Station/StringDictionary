@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 #pragma warning disable CS8601
 #pragma warning disable CS8603
 #pragma warning disable CS8618
+#pragma warning disable CS8625
 #pragma warning disable CS8632
 
 // ReSharper disable ALL
@@ -105,7 +106,7 @@ namespace Herta
         ///     Get or set value
         /// </summary>
         /// <param name="key">Key</param>
-        public TValue this[string? key]
+        public TValue this[string key]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
@@ -215,7 +216,7 @@ namespace Herta
         /// <param name="value">Value</param>
         /// <returns>Added</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryAdd(string? key, in TValue value)
+        public bool TryAdd(string key, in TValue value)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -897,7 +898,9 @@ namespace Herta
         /// <param name="hashCode">HashCode</param>
         /// <returns>Bucket ref</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref int GetBucket(uint hashCode) => ref Unsafe.SizeOf<nint>() == 8 ? ref _buckets[HashHelpers.FastMod(hashCode, (uint)_buckets.Length, _fastModMultiplier)] : ref _buckets[hashCode % _buckets.Length];
+        private ref int GetBucket(uint hashCode) => ref Unsafe.SizeOf<nint>() == 8
+            ? ref _buckets[HashHelpers.FastMod(hashCode, (uint)_buckets.Length, _fastModMultiplier)]
+            : ref _buckets[hashCode % _buckets.Length];
 
         /// <summary>
         ///     Copy to
@@ -1100,7 +1103,7 @@ namespace Herta
                 /// <summary>
                 ///     Current
                 /// </summary>
-                private string? _currentKey;
+                private string _currentKey;
 
                 /// <summary>
                 ///     Structure
@@ -1144,7 +1147,7 @@ namespace Herta
                 /// <summary>
                 ///     Current
                 /// </summary>
-                public string? Current
+                public string Current
                 {
                     [MethodImpl(MethodImplOptions.AggressiveInlining)]
                     get => _currentKey;
