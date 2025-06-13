@@ -898,9 +898,7 @@ namespace Herta
         /// <param name="hashCode">HashCode</param>
         /// <returns>Bucket ref</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref int GetBucket(uint hashCode) => ref Unsafe.SizeOf<nint>() == 8
-            ? ref _buckets[HashHelpers.FastMod(hashCode, (uint)_buckets.Length, _fastModMultiplier)]
-            : ref _buckets[hashCode % _buckets.Length];
+        private ref int GetBucket(uint hashCode) => ref Unsafe.SizeOf<nint>() == 8 ? ref _buckets[HashHelpers.FastMod(hashCode, (uint)_buckets.Length, _fastModMultiplier)] : ref _buckets[hashCode % _buckets.Length];
 
         /// <summary>
         ///     Copy to
