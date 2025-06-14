@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 #pragma warning disable CS8601
 #pragma warning disable CS8603
 #pragma warning disable CS8618
+#pragma warning disable CS8619
 #pragma warning disable CS8625
 #pragma warning disable CS8632
 
