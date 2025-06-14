@@ -575,7 +575,7 @@ namespace Herta
                 if ((uint)i >= (uint)_entries.Length)
                     break;
                 ref var entry = ref _entries[i];
-                if (entry.HashCode == hashCode && entry.Key.AsSpan().SequenceEqual(key))
+                if (entry.HashCode == hashCode && entry.Key.Equals(key))
                 {
                     exists = true;
                     return ref entry.Value;
