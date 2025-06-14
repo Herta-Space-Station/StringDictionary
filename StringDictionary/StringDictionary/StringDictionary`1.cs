@@ -422,6 +422,69 @@ namespace Herta
         }
 
         /// <summary>
+        ///     Get value ref or add default
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <param name="exists">Exists</param>
+        /// <returns>Value ref</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref TValue GetValueRefOrAddDefault(string key, out bool exists)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            var hashCode = (uint)XxHash.Hash32(key.AsSpan());
+            uint collisionCount = 0;
+            ref var bucket = ref GetBucket(hashCode);
+            var i = bucket - 1;
+            while (true)
+            {
+                if ((uint)i >= (uint)_entries.Length)
+                    break;
+                ref var entry = ref _entries[i];
+                if (entry.HashCode == hashCode && entry.Key.AsSpan().SequenceEqual(key))
+                {
+                    exists = true;
+                    return ref entry.Value;
+                }
+
+                i = entry.Next;
+                collisionCount++;
+                if (collisionCount > (uint)_entries.Length)
+                    throw new InvalidOperationException("ConcurrentOperationsNotSupported");
+            }
+
+            int index;
+            if (_freeCount > 0)
+            {
+                index = _freeList;
+                _freeList = -3 - _entries[_freeList].Next;
+                _freeCount--;
+            }
+            else
+            {
+                var count = _count;
+                if (count == _entries.Length)
+                {
+                    Resize();
+                    bucket = ref GetBucket(hashCode);
+                }
+
+                index = count;
+                _count = count + 1;
+            }
+
+            ref var newEntry = ref _entries[index];
+            newEntry.HashCode = hashCode;
+            newEntry.Next = bucket - 1;
+            newEntry.Key = key;
+            newEntry.Value = default;
+            bucket = index + 1;
+            _version++;
+            exists = false;
+            return ref newEntry.Value;
+        }
+
+        /// <summary>
         ///     Ensure capacity
         /// </summary>
         /// <param name="capacity">Capacity</param>
