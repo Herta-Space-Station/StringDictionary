@@ -114,7 +114,7 @@ namespace Herta
             {
                 if (key == null)
                     throw new ArgumentNullException(nameof(key));
-                ref var value = ref FindValue(key);
+                ref var value = ref FindValueString(key);
                 if (!Unsafe.IsNullRef(ref Unsafe.AsRef(in value)))
                     return value;
                 throw new KeyNotFoundException(key);
@@ -268,6 +268,46 @@ namespace Herta
         ///     Remove
         /// </summary>
         /// <param name="key">Key</param>
+        /// <returns>Removed</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(string key)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            uint collisionCount = 0;
+            var hashCode = (uint)XxHash.Hash32(key.AsSpan());
+            ref var bucket = ref GetBucket(hashCode);
+            var last = -1;
+            var i = bucket - 1;
+            while (i >= 0)
+            {
+                ref var entry = ref _entries[i];
+                if (entry.HashCode == hashCode && entry.Key.Equals(key))
+                {
+                    if (last < 0)
+                        bucket = entry.Next + 1;
+                    else
+                        _entries[last].Next = entry.Next;
+                    entry.Next = -3 - _freeList;
+                    _freeList = i;
+                    _freeCount++;
+                    return true;
+                }
+
+                last = i;
+                i = entry.Next;
+                collisionCount++;
+                if (collisionCount > (uint)_entries.Length)
+                    throw new InvalidOperationException("ConcurrentOperationsNotSupported");
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        ///     Remove
+        /// </summary>
+        /// <param name="key">Key</param>
         /// <param name="value">Value</param>
         /// <returns>Removed</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -308,6 +348,49 @@ namespace Herta
         }
 
         /// <summary>
+        ///     Remove
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <param name="value">Value</param>
+        /// <returns>Removed</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(string key, out TValue value)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            uint collisionCount = 0;
+            var hashCode = (uint)XxHash.Hash32(key.AsSpan());
+            ref var bucket = ref GetBucket(hashCode);
+            var last = -1;
+            var i = bucket - 1;
+            while (i >= 0)
+            {
+                ref var entry = ref _entries[i];
+                if (entry.HashCode == hashCode && entry.Key.Equals(key))
+                {
+                    if (last < 0)
+                        bucket = entry.Next + 1;
+                    else
+                        _entries[last].Next = entry.Next;
+                    value = entry.Value;
+                    entry.Next = -3 - _freeList;
+                    _freeList = i;
+                    _freeCount++;
+                    return true;
+                }
+
+                last = i;
+                i = entry.Next;
+                collisionCount++;
+                if (collisionCount > (uint)_entries.Length)
+                    throw new InvalidOperationException("ConcurrentOperationsNotSupported");
+            }
+
+            value = default;
+            return false;
+        }
+
+        /// <summary>
         ///     Contains key
         /// </summary>
         /// <param name="key">Key</param>
@@ -318,6 +401,19 @@ namespace Herta
             if (Unsafe.IsNullRef(ref MemoryMarshal.GetReference(key)))
                 throw new ArgumentNullException(nameof(key));
             return !Unsafe.IsNullRef(ref Unsafe.AsRef(in FindValue(key)));
+        }
+
+        /// <summary>
+        ///     Contains key
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <returns>Contains key</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool ContainsKey(string key)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            return !Unsafe.IsNullRef(ref Unsafe.AsRef(in FindValueString(key)));
         }
 
         /// <summary>
@@ -343,6 +439,28 @@ namespace Herta
         }
 
         /// <summary>
+        ///     Try to get the value
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <param name="value">Value</param>
+        /// <returns>Got</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetValue(string key, out TValue value)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            ref var valRef = ref FindValueString(key);
+            if (!Unsafe.IsNullRef(ref Unsafe.AsRef(in valRef)))
+            {
+                value = valRef;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        /// <summary>
         ///     Get value ref
         /// </summary>
         /// <param name="key">Key</param>
@@ -354,6 +472,22 @@ namespace Herta
             if (Unsafe.IsNullRef(ref MemoryMarshal.GetReference(key)))
                 throw new ArgumentNullException(nameof(key));
             ref var valRef = ref FindValue(key);
+            exists = !Unsafe.IsNullRef(ref Unsafe.AsRef(in valRef));
+            return ref valRef;
+        }
+
+        /// <summary>
+        ///     Get value ref
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <param name="exists">Exists</param>
+        /// <returns>Value ref</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref TValue GetValueRef(string key, out bool exists)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            ref var valRef = ref FindValueString(key);
             exists = !Unsafe.IsNullRef(ref Unsafe.AsRef(in valRef));
             return ref valRef;
         }
@@ -567,6 +701,32 @@ namespace Herta
                     return ref Unsafe.NullRef<TValue>();
                 ref var entry = ref _entries[i];
                 if (entry.HashCode == hashCode && entry.Key.AsSpan().SequenceEqual(key))
+                    return ref entry.Value;
+                i = entry.Next;
+                collisionCount++;
+            } while (collisionCount <= (uint)_entries.Length);
+
+            throw new InvalidOperationException("ConcurrentOperationsNotSupported");
+        }
+
+        /// <summary>
+        ///     Find value
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <returns>Value</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ref TValue FindValueString(string key)
+        {
+            var hashCode = (uint)XxHash.Hash32(key.AsSpan());
+            var i = GetBucket(hashCode);
+            uint collisionCount = 0;
+            i--;
+            do
+            {
+                if ((uint)i >= (uint)_entries.Length)
+                    return ref Unsafe.NullRef<TValue>();
+                ref var entry = ref _entries[i];
+                if (entry.HashCode == hashCode && entry.Key.Equals(key))
                     return ref entry.Value;
                 i = entry.Next;
                 collisionCount++;
