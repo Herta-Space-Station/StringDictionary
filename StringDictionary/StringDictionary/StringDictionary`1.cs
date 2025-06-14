@@ -806,7 +806,7 @@ namespace Herta
                 if ((uint)i >= (uint)_entries.Length)
                     break;
                 ref var entry = ref _entries[i];
-                if (entry.HashCode == hashCode && entry.Key.AsSpan().SequenceEqual(key))
+                if (entry.HashCode == hashCode && entry.Key.Equals(key))
                 {
                     entry.Value = value;
                     return;
@@ -864,7 +864,7 @@ namespace Herta
                 if ((uint)i >= (uint)_entries.Length)
                     break;
                 ref var entry = ref _entries[i];
-                if (entry.HashCode == hashCode && entry.Key.AsSpan().SequenceEqual(key))
+                if (entry.HashCode == hashCode && entry.Key.Equals(key))
                     throw new ArgumentException($"AddingDuplicateWithKey, {key}");
                 i = entry.Next;
                 collisionCount++;
@@ -918,7 +918,7 @@ namespace Herta
                 if ((uint)i >= (uint)_entries.Length)
                     break;
                 ref var entry = ref _entries[i];
-                if (entry.HashCode == hashCode && entry.Key.AsSpan().SequenceEqual(key))
+                if (entry.HashCode == hashCode && entry.Key.Equals(key))
                     return false;
                 i = entry.Next;
                 collisionCount++;
