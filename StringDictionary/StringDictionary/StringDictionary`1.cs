@@ -467,7 +467,7 @@ namespace Herta
         /// <param name="exists">Exists</param>
         /// <returns>Value ref</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref TValue GetValueRef(ReadOnlySpan<char> key, out bool exists)
+        public ref TValue GetValueRefOrNullRef(ReadOnlySpan<char> key, out bool exists)
         {
             if (Unsafe.IsNullRef(ref MemoryMarshal.GetReference(key)))
                 throw new ArgumentNullException(nameof(key));
@@ -483,7 +483,7 @@ namespace Herta
         /// <param name="exists">Exists</param>
         /// <returns>Value ref</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref TValue GetValueRef(string key, out bool exists)
+        public ref TValue GetValueRefOrNullRef(string key, out bool exists)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
